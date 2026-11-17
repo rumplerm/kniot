@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>הקניות שלנו</title>
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="הקניות שלנו">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+html,body{margin:0;height:100%;background:#0f766e;overflow:hidden}
+body{padding-top:env(safe-area-inset-top)}
+iframe{border:0;width:100%;height:100%;display:block;background:#fff}
+#load{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;gap:14px}
+#load img{width:96px;height:96px;border-radius:22px}
+#fb{display:none;color:#fff;text-decoration:underline;font-size:14px}
+</style>
+</head>
+<body>
+<div id="load"><img src="icon-192.png" alt=""><div>טוען…</div><a id="fb" target="_blank">לא נטען? לחצו כאן</a></div>
+<iframe id="app" title="הקניות שלנו" allow="clipboard-write"></iframe>
+<script>
+var URL_APP='https://script.google.com/macros/s/AKfycbx7Uz7-hC6e1HM6RbI-wJUnaSqq-VMi2BnFqn3fu33G9SfdYZeaUGKW0vDiXZZGZfwU1g/exec';
+var f=document.getElementById('app'),l=document.getElementById('load'),fb=document.getElementById('fb');
+fb.href=URL_APP;
+f.onload=function(){l.style.display='none'};
+f.src=URL_APP;
+setTimeout(function(){fb.style.display='block'},8000);
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+</script>
+</body>
+</html>
