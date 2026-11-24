@@ -13,25 +13,80 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
-html,body{margin:0;height:100%;background:#0f766e;overflow:hidden}
+html,body{margin:0;height:100%;background:#0f766e;overflow:hidden;font-family:system-ui,-apple-system,sans-serif}
 body{padding-top:env(safe-area-inset-top)}
 iframe{border:0;width:100%;height:100%;display:block;background:#fff}
-#load{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;gap:14px}
+#load{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:14px}
 #load img{width:96px;height:96px;border-radius:22px}
 #fb{display:none;color:#fff;text-decoration:underline;font-size:14px}
+#rec{display:none;position:fixed;inset:0;z-index:50;background:rgba(15,118,110,.96);color:#fff;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px}
+#rec.show{display:flex}
+#recBtn{width:120px;height:120px;border-radius:50%;border:0;background:#fff;color:#0f766e;font-size:52px}
+#recBtn.on{background:#dc2626;color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{transform:scale(1.08)}}
+#recTxt{font-size:18px;min-height:2.6em;max-width:90%}
+#recMsg{font-size:14px;opacity:.9}
+#recClose{background:transparent;border:1px solid #fff;color:#fff;border-radius:10px;padding:10px 22px;font-size:16px}
 </style>
 </head>
 <body>
 <div id="load"><img src="icon-192.png" alt=""><div>טוען…</div><a id="fb" target="_blank">לא נטען? לחצו כאן</a></div>
-<iframe id="app" title="הקניות שלנו" allow="clipboard-write"></iframe>
+<iframe id="app" title="הקניות שלנו"></iframe>
+
+<div id="rec">
+  <div id="recMsg">לחצו על המיקרופון ואמרו מה חסר</div>
+  <button id="recBtn" aria-label="הקלטה">🎙️</button>
+  <div id="recTxt"></div>
+  <button id="recClose">סיום</button>
+</div>
+
 <script>
 var URL_APP='https://script.google.com/macros/s/AKfycbx7Uz7-hC6e1HM6RbI-wJUnaSqq-VMi2BnFqn3fu33G9SfdYZeaUGKW0vDiXZZGZfwU1g/exec';
 var f=document.getElementById('app'),l=document.getElementById('load'),fb=document.getElementById('fb');
 fb.href=URL_APP;
-f.onload=function(){l.style.display='none'};
+f.onload=function(){l.style.display='none';hello()};
 f.src=URL_APP;
 setTimeout(function(){fb.style.display='block'},8000);
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+
+// The app lives in nested Google iframes that cannot use the microphone.
+// This top-level page records speech and passes the text down into the app.
+function send(msg){
+  function walk(w,d){try{w.postMessage(msg,'*')}catch(e){}
+    if(d>4)return;try{for(var i=0;i<w.frames.length;i++)walk(w.frames[i],d+1)}catch(e){}}
+  walk(f.contentWindow,0);
+}
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function hello(){var n=0,t=setInterval(function(){send({kniot:'hello',sr:!!SR});if(++n>8)clearInterval(t)},1500)}
+
+var rec=document.getElementById('rec'),btn=document.getElementById('recBtn'),txt=document.getElementById('recTxt'),msg=document.getElementById('recMsg');
+var r=null,finalText='';
+function start(){
+  if(!SR){msg.textContent='הדפדפן בטלפון לא תומך בהקלטה. השתמשו במיקרופון של המקלדת.';return}
+  if(r){try{r.stop()}catch(e){}return}
+  finalText='';txt.textContent='';
+  r=new SR();r.lang='he-IL';r.interimResults=true;r.continuous=true;
+  r.onstart=function(){btn.className='on';msg.textContent='מקשיב… דברו עכשיו. לחצו שוב לסיום.'};
+  r.onresult=function(e){var interim='';for(var i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)finalText+=e.results[i][0].transcript+', ';else interim+=e.results[i][0].transcript}
+    txt.textContent=finalText+interim};
+  r.onerror=function(e){msg.textContent=e.error=='not-allowed'||e.error=='service-not-allowed'
+      ?'אין הרשאה למיקרופון. אשרו גישה למיקרופון בהגדרות הדפדפן ונסו שוב.'
+      :'ההקלטה נכשלה ('+e.error+'). נסו שוב.'};
+  r.onend=function(){r=null;btn.className='';var t=(finalText||txt.textContent).trim();
+    if(t){send({kniot:'text',text:t});close()}else if(msg.textContent.indexOf('מקשיב')==0){msg.textContent='לא נקלט דיבור. לחצו שוב על המיקרופון.'}};
+  try{r.start()}catch(e){r=null;msg.textContent='לחצו על המיקרופון כדי להתחיל.'}
+}
+function open_(){rec.className='show';msg.textContent='לחצו על המיקרופון ואמרו מה חסר';txt.textContent='';start()}
+function close(){if(r){try{r.stop()}catch(e){}}rec.className='';send({kniot:'recend'})}
+btn.onclick=start;
+document.getElementById('recClose').onclick=close;
+window.addEventListener('message',function(e){
+  if(!e.data||!e.data.kniot)return;
+  if(!/(^|\.)googleusercontent\.com$|script\.google\.com$/.test(new URL(e.origin).hostname))return;
+  if(e.data.kniot=='rec')open_();
+  if(e.data.kniot=='ping')send({kniot:'hello',sr:!!SR});
+});
 </script>
 </body>
 </html>
